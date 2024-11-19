@@ -9,7 +9,27 @@ import JsBarcode from "jsbarcode";
 
 export default function GitHubReceipts() {
   const [username, setUsername] = useState("");
-  const [receipt, setReceipt] = useState(null);
+  type Receipt = {
+    topLanguages: string;
+    date: string;
+    time: string;
+    order: number;
+    authCode: number;
+    cardNumber: string;
+    mostActiveDay: string;
+    commits30d: number;
+    starsEarned: number;
+    repoForks: number;
+    profileScore: number;
+    public_repos: number;
+    public_gists: number;
+    followers: number;
+    following: number;
+    name: string;
+    login: string;
+  };
+
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [isDark, setIsDark] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const barcodeRef = useRef<SVGSVGElement>(null);
@@ -19,12 +39,23 @@ export default function GitHubReceipts() {
       const userResponse = await fetch(
         `https://api.github.com/users/${username}`
       );
-      const userData = await userResponse.json();
+      const userData = (await userResponse.json()) as {
+        public_repos: number;
+        public_gists: number;
+        followers: number;
+        following: number;
+        name: string;
+        login: string;
+      };
 
       const reposResponse = await fetch(
         `https://api.github.com/users/${username}/repos`
       );
-      const reposData = await reposResponse.json();
+      const reposData = (await reposResponse.json()) as {
+        language: string;
+        stargazers_count: number;
+        forks_count: number;
+      }[];
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -38,17 +69,22 @@ export default function GitHubReceipts() {
           },
         }
       );
-      const commitsData = await commitsResponse.json();
+      const commitsData = (await commitsResponse.json()) as {
+        total_count: number;
+      };
 
-      const languages = reposData.reduce((acc: any, repo: any) => {
-        if (repo.language) {
-          acc[repo.language] = (acc[repo.language] || 0) + 1;
-        }
-        return acc;
-      }, {});
+      const languages = reposData.reduce(
+        (acc: Record<string, number>, repo: { language: string | null }) => {
+          if (repo.language) {
+            acc[repo.language] = (acc[repo.language] || 0) + 1;
+          }
+          return acc;
+        },
+        {}
+      );
 
       const topLanguages = Object.entries(languages)
-        .sort(([, a]: any, [, b]: any) => b - a)
+        .sort(([, a]: [string, number], [, b]: [string, number]) => b - a)
         .slice(0, 3)
         .map(([lang]) => lang)
         .join(", ");
@@ -90,17 +126,25 @@ export default function GitHubReceipts() {
           ][Math.floor(Math.random() * 7)],
           commits30d: commitsData.total_count,
           starsEarned: reposData.reduce(
-            (sum: number, repo: any) => sum + repo.stargazers_count,
+            (sum: number, repo: { stargazers_count: number }) =>
+              sum + repo.stargazers_count,
             0
           ),
           repoForks: reposData.reduce(
-            (sum: number, repo: any) => sum + repo.forks_count,
+            (sum: number, repo: { forks_count: number }) =>
+              sum + repo.forks_count,
             0
           ),
-          contributionScore:
+          profileScore:
             userData.public_repos +
             userData.public_gists +
-            commitsData.total_count,
+            userData.followers +
+            userData.following +
+            reposData.reduce(
+              (sum: number, repo: { stargazers_count: number }) =>
+                sum + repo.stargazers_count,
+              0
+            ),
         };
         setReceipt(newReceipt);
 
@@ -280,13 +324,13 @@ export default function GitHubReceipts() {
                     <span>{receipt.commits30d}</span>
                   </div>
                   <div className="flex justify-between font-bold">
-                    <span>CONTRIBUTION SCORE:</span>
-                    <span>{receipt.contributionScore}</span>
+                    <span>PROFILE SCORE:</span>
+                    <span>{receipt.profileScore}</span>
                   </div>
                 </div>
 
                 <div className="text-center space-y-1 text-sm">
-                  <p>Served by: Dennis Ritchie</p>
+                  <p>Served by: gitreceipt.itsvg.in</p>
                   <p>{receipt.time}</p>
                 </div>
 
