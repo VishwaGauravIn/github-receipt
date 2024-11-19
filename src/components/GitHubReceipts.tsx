@@ -167,7 +167,7 @@ export default function GitHubReceipts() {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? "dark" : ""}`}>
+    <div className={`min-h-[calc(100svh-185px)] ${isDark ? "dark" : ""}`}>
       <div className="max-w-2xl mx-auto p-6 space-y-8">
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
